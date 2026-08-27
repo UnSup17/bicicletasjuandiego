@@ -45,6 +45,15 @@ export async function POST(request: Request) {
         uploadedUrls.push(blob.url);
       }
     } else {
+      // Si estamos en Vercel o en producción, no podemos usar el sistema de archivos local.
+      // Retornamos un error descriptivo en lugar de fallar con EROFS (Read-only file system).
+      if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+        return NextResponse.json(
+          { error: 'La subida de imágenes no está configurada en producción. Por favor, conecta Vercel Blob en el panel de tu proyecto de Vercel (se requiere BLOB_READ_WRITE_TOKEN).' },
+          { status: 400 }
+        );
+      }
+
       // Caída al sistema de archivos local (desarrollo local)
       const uploadDir = join(process.cwd(), 'public', 'uploads');
       await mkdir(uploadDir, { recursive: true });
