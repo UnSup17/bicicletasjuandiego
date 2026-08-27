@@ -1,11 +1,12 @@
 // ============================================================
-//  app/api/upload/route.ts — Route Handler for Local Image Upload
+//  app/api/upload/route.ts — Route Handler for Image Upload (Vercel Blob / Local)
 // ============================================================
 
 import { NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { auth } from '@/lib/auth';
+import { put } from '@vercel/blob';
 
 export async function POST(request: Request) {
   try {
@@ -24,28 +25,45 @@ export async function POST(request: Request) {
       );
     }
 
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    // Asegurar que la carpeta de destino exista
-    await mkdir(uploadDir, { recursive: true });
-
+    const isVercelBlobEnabled = !!process.env.BLOB_READ_WRITE_TOKEN;
     const uploadedUrls: string[] = [];
 
-    for (const file of files) {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+    if (isVercelBlobEnabled) {
+      // Subida usando Vercel Blob (producción en Vercel)
+      for (const file of files) {
+        // Generar nombre de archivo limpio
+        const fileExtension = file.name.split('.').pop() || 'jpg';
+        const cleanBaseName = file.name
+          .split('.')[0]
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '_');
+        const filename = `${Date.now()}-${cleanBaseName}.${fileExtension}`;
 
-      // Generar nombre de archivo único libre de caracteres extraños
-      const fileExtension = file.name.split('.').pop() || 'jpg';
-      const cleanBaseName = file.name
-        .split('.')[0]
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '_');
-      const filename = `${Date.now()}-${cleanBaseName}.${fileExtension}`;
-      const filePath = join(uploadDir, filename);
+        const blob = await put(filename, file, {
+          access: 'public',
+        });
+        uploadedUrls.push(blob.url);
+      }
+    } else {
+      // Caída al sistema de archivos local (desarrollo local)
+      const uploadDir = join(process.cwd(), 'public', 'uploads');
+      await mkdir(uploadDir, { recursive: true });
 
-      // Guardar el archivo en public/uploads
-      await writeFile(filePath, buffer);
-      uploadedUrls.push(`/uploads/${filename}`);
+      for (const file of files) {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        const fileExtension = file.name.split('.').pop() || 'jpg';
+        const cleanBaseName = file.name
+          .split('.')[0]
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '_');
+        const filename = `${Date.now()}-${cleanBaseName}.${fileExtension}`;
+        const filePath = join(uploadDir, filename);
+
+        await writeFile(filePath, buffer);
+        uploadedUrls.push(`/uploads/${filename}`);
+      }
     }
 
     return NextResponse.json({
@@ -61,3 +79,4 @@ export async function POST(request: Request) {
     );
   }
 }
+
