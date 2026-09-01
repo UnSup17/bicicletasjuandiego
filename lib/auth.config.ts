@@ -12,4 +12,6 @@ export const authConfig = {
   },
   providers: [], // Agregado vacío; se poblará en auth.ts con Credentials
   callbacks: {},
+  trustHost: true,
 } satisfies NextAuthConfig;
+

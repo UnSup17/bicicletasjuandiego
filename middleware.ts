@@ -13,7 +13,7 @@ export default auth((req) => {
 
   if (isAdminPage && !isLoggedIn) {
     // Redirigir al login si no está autenticado
-    const loginUrl = new URL('/admin/login', req.nextUrl.origin);
+    const loginUrl = new URL('/admin/login', req.nextUrl);
     // Preservar la url de retorno
     loginUrl.searchParams.set('callbackUrl', req.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
@@ -21,7 +21,7 @@ export default auth((req) => {
 
   if (isAuthPage && isLoggedIn) {
     // Si ya está logueado e ingresa al login, redirigir al dashboard
-    return NextResponse.redirect(new URL('/admin/dashboard', req.nextUrl.origin));
+    return NextResponse.redirect(new URL('/admin/dashboard', req.nextUrl));
   }
 
   return NextResponse.next();
